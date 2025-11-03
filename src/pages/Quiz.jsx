@@ -12,7 +12,55 @@ export default function Quiz() {
   const [error, setError] = useState(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
+  // ===== 新增：元信息（title/desc） =====
+  const [meta, setMeta] = useState({ title: '', desc: '' })
+
   const itemRefs = useRef([])
+
+  // 解析 meta.json 的不同组织方式，兼容：
+  // 1) { "title": "...", "desc": "..." }
+  // 2) { "ch1": {title, desc}, "ch2": {...}, ... }
+  // 3) [ {title, desc}, {title, desc}, ... ]  // 按索引（id-1）取
+  function resolveMeta(data, id) {
+    const fallback = { title: `章节：第${id}章`, desc: '' }
+
+    if (!data || typeof data !== 'object') return fallback
+
+    // 形式1：扁平对象
+    if ('title' in data || 'desc' in data) {
+      return { title: data.title || fallback.title, desc: data.desc || '' }
+    }
+
+    // 形式2：按键 ch{id} 或 {id}
+    const key1 = `ch${id}`
+    const key2 = String(id)
+    if (data[key1] && typeof data[key1] === 'object') {
+      return {
+        title: data[key1].title || fallback.title,
+        desc: data[key1].desc || ''
+      }
+    }
+    if (data[key2] && typeof data[key2] === 'object') {
+      return {
+        title: data[key2].title || fallback.title,
+        desc: data[key2].desc || ''
+      }
+    }
+
+    // 形式3：数组，按 (id - 1) 取
+    if (Array.isArray(data)) {
+      const idx = Math.max(0, Number(id) - 1)
+      const item = data[idx]
+      if (item && typeof item === 'object') {
+        return {
+          title: item.title || fallback.title,
+          desc: item.desc || ''
+        }
+      }
+    }
+
+    return fallback
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -22,6 +70,7 @@ export default function Quiz() {
     setAnswers({})
     setActiveIndex(0)
 
+    // 加载题目
     fetch(`/questions/ch${id}.json?_=${Date.now()}`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -44,6 +93,19 @@ export default function Quiz() {
       })
       .catch(e => { if (!cancelled) setError(e.message || '加载失败') })
       .finally(() => { if (!cancelled) setLoading(false) })
+
+    // 加载 meta（标题/描述）
+    fetch(`/questions/meta.json?_=${Date.now()}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled) return
+        const m = resolveMeta(data, id)
+        setMeta(m)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMeta({ title: `章节：第${id}章`, desc: '' })
+      })
 
     return () => { cancelled = true }
   }, [id])
@@ -71,7 +133,7 @@ export default function Quiz() {
       if (!correctSet.has(idx)) return 0
     }
     // 到这里说明没有选错
-    const allCorrectSelected = q.answerIndices?.every(idx => userSet.has(idx))
+    const allCorrectSelected = (q.answerIndices || []).every(idx => userSet.has(idx))
     if (allCorrectSelected) return 1
     // 少选但全都正确 -> 半分
     return 0.5
@@ -135,7 +197,9 @@ export default function Quiz() {
     <div>
       {/* 顶部：标题 + 返回 */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-        <h3 style={{ margin:0 }}>章节：第{id}章</h3>
+        <h3 style={{ margin:0 }}>
+          {meta.title}{meta.desc ? `：${meta.desc}` : ''}
+        </h3>
         <Link className="button" to="/">返回首页</Link>
       </div>
 
