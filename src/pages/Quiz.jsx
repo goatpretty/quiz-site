@@ -18,45 +18,42 @@ export default function Quiz() {
   const itemRefs = useRef([])
 
   // 解析 meta.json 的不同组织方式，兼容：
-  // 1) { "title": "...", "desc": "..." }
-  // 2) { "ch1": {title, desc}, "ch2": {...}, ... }
-  // 3) [ {title, desc}, {title, desc}, ... ]  // 按索引（id-1）取
+  // 1) 数组，且每项包含 id/title/desc（优先）
+  // 2) 映射：{ "ch1": {...}, "1": {...} }
+  // 3) 扁平：{ "title": "...", "desc": "..." }
   function resolveMeta(data, id) {
-    const fallback = { title: `章节：第${id}章`, desc: '' }
+    const idStr = String(id)
+    const idNum = Number.parseInt(idStr, 10)
+    const fallback = { title: `章节：第${idStr}章`, desc: '' }
 
     if (!data || typeof data !== 'object') return fallback
 
-    // 形式1：扁平对象
-    if ('title' in data || 'desc' in data) {
-      return { title: data.title || fallback.title, desc: data.desc || '' }
-    }
-
-    // 形式2：按键 ch{id} 或 {id}
-    const key1 = `ch${id}`
-    const key2 = String(id)
-    if (data[key1] && typeof data[key1] === 'object') {
-      return {
-        title: data[key1].title || fallback.title,
-        desc: data[key1].desc || ''
-      }
-    }
-    if (data[key2] && typeof data[key2] === 'object') {
-      return {
-        title: data[key2].title || fallback.title,
-        desc: data[key2].desc || ''
-      }
-    }
-
-    // 形式3：数组，按 (id - 1) 取
+    // 情况1：带 id 的数组 [{id,title,desc}, ...]
     if (Array.isArray(data)) {
-      const idx = Math.max(0, Number(id) - 1)
-      const item = data[idx]
-      if (item && typeof item === 'object') {
+      const found = data.find(
+        item => String(item?.id) === idStr || Number(item?.id) === idNum
+      )
+      if (found && typeof found === 'object') {
         return {
-          title: item.title || fallback.title,
-          desc: item.desc || ''
+          title: found.title || fallback.title,
+          desc: found.desc || ''
         }
       }
+    }
+
+    // 情况2：按键映射 { "ch2": {...}, "2": {...} }
+    const key1 = `ch${idStr}`
+    const key2 = idStr
+    if (data[key1] && typeof data[key1] === 'object') {
+      return { title: data[key1].title || fallback.title, desc: data[key1].desc || '' }
+    }
+    if (data[key2] && typeof data[key2] === 'object') {
+      return { title: data[key2].title || fallback.title, desc: data[key2].desc || '' }
+    }
+
+    // 情况3：扁平对象 {title, desc}
+    if ('title' in data || 'desc' in data) {
+      return { title: data.title || fallback.title, desc: data.desc || '' }
     }
 
     return fallback
