@@ -1,0 +1,28 @@
+/* 外壳：占满高度，提供基础背景（颜色来自 styles.css 的变量） */
+.mobile-shell {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* 页面容器：与 .container 配合，增加顶部间距以避免贴头 */
+.page-container {
+  padding-top: 12px;
+  padding-bottom: calc(16px + var(--safe-bottom)); /* 底部安全区 */
+}
+
+/* 让图片/大块内容在可读宽度内居中（不强制） */
+/* 可按页面按需覆盖 */
+.page-container > * {
+  max-width: 100%;
+}
+
+/* 防止 header 下方出现轻微抖动时的阴影跳动 */
+.header {
+  will-change: transform;
+}
+
+/* 平板提升可读宽度（可按需调整） */
+@media (min-width: 860px){
+  .page-container { padding-top: 16px; }
+}
