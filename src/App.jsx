@@ -2,7 +2,7 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import './styles.css'; 
-import './app.css';    
+import './App.css';    
 import Home from './pages/Home.jsx'
 import Quiz from './pages/Quiz.jsx'
 
