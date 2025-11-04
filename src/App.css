@@ -23,6 +23,6 @@
 }
 
 /* 平板提升可读宽度（可按需调整） */
-@media (min-width: 860px){
+@media (min-width: 860px) {
   .page-container { padding-top: 16px; }
 }
