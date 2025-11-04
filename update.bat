@@ -1,6 +1,10 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
 
+:: ====== 自定义仓库地址（已按你的要求固定）======
+set "REMOTE_HTTPS=https://github.com/goatpretty/quiz-site.git"
+set "REMOTE_SSH=git@github.com:goatpretty/quiz-site.git"
+
 :: === 0) 基础检查：Git 是否可用 ===
 git --version >nul 2>&1
 if errorlevel 1 (
@@ -21,7 +25,7 @@ if errorlevel 1 (
 )
 
 :: === 2) 获取当前分支；没有则新建 main 分支 ===
-for /f "delims=" %%i in ('git symbolic-ref --short HEAD 2^>nul') do set BRANCH=%%i
+for /f "delims=" %%i in ('git symbolic-ref --short HEAD 2^>nul') do set "BRANCH=%%i"
 if not defined BRANCH (
   set "BRANCH=main"
   echo [INFO] 当前无分支，创建并切换到 "%BRANCH%" ...
@@ -38,7 +42,7 @@ git add -A
 
 :: === 4) 读取提交信息，留空则默认 "auto update" ===
 set "MSG="
-set /p MSG=请输入本次更新说明（留空则使用 "auto update"）：
+set /p MSG=请输入本次更新说明（留空则使用 "auto update"）： 
 if not defined MSG set "MSG=auto update"
 
 :: === 5) 若有已暂存变更则提交 ===
@@ -54,42 +58,100 @@ if errorlevel 1 (
   echo [INFO] 无需提交：没有已暂存的变更。
 )
 
-:: === 6) 检查/设置远程 origin ===
-git remote get-url origin >nul 2>&1
-if errorlevel 1 (
-  echo [INFO] 未检测到远程 origin。
-  set "REMOTE="
-  set /p REMOTE=请输入远程仓库地址（如 git@github.com:USER/REPO.git 或 https://github.com/USER/REPO.git）：
-  if not defined REMOTE (
-    echo [ERROR] 未提供远程地址，无法推送。
+:: === 6) 检查/设置远程 origin（默认使用 HTTPS） ===
+call :get_origin
+if not defined ORIGIN_URL (
+  echo [INFO] 未检测到远程 origin，设置为 HTTPS：%REMOTE_HTTPS%
+  git remote add origin "%REMOTE_HTTPS%" || (
+    echo [ERROR] 添加远程地址失败。
     pause
     exit /b 1
   )
-  git remote add origin "%REMOTE%" || (
-    echo [ERROR] 添加远程地址失败。
+) else (
+  echo [INFO] 当前 origin：!ORIGIN_URL!
+)
+
+:: 若当前 origin 既不是 HTTPS 也不是 SSH，则统一先切到 HTTPS
+call :get_origin
+if /i not "!ORIGIN_URL!"=="%REMOTE_HTTPS%" if /i not "!ORIGIN_URL!"=="%REMOTE_SSH%" (
+  echo [INFO] 将 origin 规范化为 HTTPS：%REMOTE_HTTPS%
+  git remote set-url origin "%REMOTE_HTTPS%" || (
+    echo [ERROR] 设置远程地址失败。
     pause
     exit /b 1
   )
 )
 
-:: === 7) 推送（若未跟踪上游则设置 -u） ===
-git rev-parse --abbrev-ref --symbolic-full-name @{u} >nul 2>&1
+:: === 7) 推送：若失败且为 HTTPS，则自动切换到 SSH 并重试 ===
+call :push_with_fallback "%BRANCH%"
 if errorlevel 1 (
-  echo [INFO] 首次推送，设置上游：origin/%BRANCH%
-  git push -u origin "%BRANCH%" || (
-    echo [ERROR] 推送失败，请检查网络或权限（SSH Key/Token）。
-    pause
-    exit /b 1
-  )
-) else (
-  echo [INFO] 正在推送到远程...
-  git push || (
-    echo [ERROR] 推送失败，请检查网络或权限（SSH Key/Token）。
-    pause
-    exit /b 1
-  )
+  echo [ERROR] 推送失败（HTTPS/SSH 均未成功）。请检查网络、权限或仓库访问权。
+  pause
+  exit /b 1
 )
 
 echo [DONE] 已完成推送到分支：%BRANCH%
 endlocal
 pause
+exit /b 0
+
+:: ================= 子程序区域 =================
+
+:push_with_fallback
+setlocal ENABLEDELAYEDEXPANSION
+set "TARGET_BRANCH=%~1"
+
+:: 判断是否已设置上游
+git rev-parse --abbrev-ref --symbolic-full-name @{u} >nul 2>&1
+if errorlevel 1 (
+  set "NEED_UPSTREAM=1"
+) else (
+  set "NEED_UPSTREAM=0"
+)
+
+call :get_origin
+
+echo [INFO] 使用远程：!ORIGIN_URL!
+if "!NEED_UPSTREAM!"=="1" (
+  echo [INFO] 首次推送，设置上游：origin/%TARGET_BRANCH%
+  git push -u origin "%TARGET_BRANCH%"
+) else (
+  echo [INFO] 正在推送到远程...
+  git push
+)
+
+if errorlevel 1 (
+  echo [WARN] 推送失败。
+  :: 如果当前是 HTTPS，自动切换到 SSH 并重试一次
+  if /i "!ORIGIN_URL!"=="%REMOTE_HTTPS%" (
+    echo [INFO] 正在将 origin 切换为 SSH：%REMOTE_SSH%
+    git remote set-url origin "%REMOTE_SSH%" || (
+      echo [ERROR] 切换到 SSH 失败。
+      endlocal & exit /b 1
+    )
+    call :get_origin
+    echo [INFO] 重试推送到：!ORIGIN_URL!
+
+    :: 重试时再次判断是否需设置上游（避免第一次失败导致未建立上游）
+    git rev-parse --abbrev-ref --symbolic-full-name @{u} >nul 2>&1
+    if errorlevel 1 (
+      git push -u origin "%TARGET_BRANCH%"
+    ) else (
+      git push
+    )
+
+    if errorlevel 1 (
+      echo [ERROR] SSH 推送仍失败（可能是 SSH Key 未配置或无仓库权限）。
+      endlocal & exit /b 1
+    )
+  ) else (
+    echo [ERROR] 非 HTTPS 远程下推送失败（当前已是 SSH）。请检查 SSH Key 或仓库权限。
+    endlocal & exit /b 1
+  )
+)
+
+endlocal & exit /b 0
+
+:get_origin
+for /f "delims=" %%i in ('git remote get-url origin 2^>nul') do set "ORIGIN_URL=%%i"
+exit /b 0
