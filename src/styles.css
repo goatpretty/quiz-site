@@ -63,7 +63,13 @@ body{
   padding: var(--space-3) var(--space-4);
 }
 .brand{display:flex;align-items:center;gap:10px;font-weight:700}
-.brand-badge{width:28px;height:28px;border-radius:8px;background:var(--brand);box-shadow:0 2px 8px #0001}
+.brand-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0.15;
+}
 
 /* 网格：手机默认单列；到中等宽度再自适应 */
 .grid{
