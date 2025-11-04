@@ -38,7 +38,7 @@ git add -A
 
 :: === 4) 读取提交信息，留空则默认 "auto update" ===
 set "MSG="
-set /p MSG=请输入本次更新说明（留空则使用 "auto update"）： 
+set /p MSG=请输入本次更新说明（留空则使用 "auto update"）：
 if not defined MSG set "MSG=auto update"
 
 :: === 5) 若有已暂存变更则提交 ===
@@ -57,16 +57,16 @@ if errorlevel 1 (
 :: === 6) 检查/设置远程 origin ===
 git remote get-url origin >nul 2>&1
 if errorlevel 1 (
-  echo [INFO] 未检测到遠程 origin。
+  echo [INFO] 未检测到远程 origin。
   set "REMOTE="
-  set /p REMOTE=请输入遠程倉庫地址（如 git@github.com:USER/REPO.git 或 https://github.com/USER/REPO.git）： 
+  set /p REMOTE=请输入远程仓库地址（如 git@github.com:USER/REPO.git 或 https://github.com/USER/REPO.git）：
   if not defined REMOTE (
-    echo [ERROR] 未提供遠程地址，无法推送。
+    echo [ERROR] 未提供远程地址，无法推送。
     pause
     exit /b 1
   )
   git remote add origin "%REMOTE%" || (
-    echo [ERROR] 添加遠程地址失败。
+    echo [ERROR] 添加远程地址失败。
     pause
     exit /b 1
   )

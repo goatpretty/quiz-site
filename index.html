@@ -1,12 +1,59 @@
 <!doctype html>
-<html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 移动端视口：禁止缩放 & 覆盖全面屏安全区 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+
+    <!-- 防止 iOS 自动把数字/邮箱变链接 -->
+    <meta name="format-detection" content="telephone=no,email=no,address=no" />
+
+    <!-- 状态栏/主题色（随明暗模式切换） -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0b" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- iOS 加到主屏后的样式 & 名称 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Quiz" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- 旧环境兼容 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
     <title>Quiz</title>
+
+
+    <!-- 全局 Reset（若你在 main.jsx 里已引入，可删掉此行；推荐保留一份移动端 Reset） -->
+    <link rel="stylesheet" href="/src/styles/reset.css" />
+
+    <!-- 极简首屏占位的样式，避免“白屏”视觉跳动（可按需删除） -->
+    <style>
+      html, body, #root { height: 100%; }
+      body { margin: 0; -webkit-tap-highlight-color: transparent; }
+      #app-loading {
+        display: grid; place-items: center; height: 100%;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: 15px; letter-spacing: .2px;
+      }
+      /* 防止图片超出屏幕 */
+      img, svg, video, canvas { max-width: 100%; height: auto; }
+    </style>
   </head>
+
   <body>
-    <div id="root"></div>
+    <noscript>需要启用 JavaScript 才能使用本应用。</noscript>
+
+    <!-- 初始占位：React 挂载后会被替换 -->
+    <div id="root">
+      <div id="app-loading">加载中…</div>
+    </div>
+
+    <!-- Vite 入口 -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
